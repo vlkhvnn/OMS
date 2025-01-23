@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"log"
 
 	pb "github.com/vlkhvnn/commons/api"
 	"github.com/vlkhvnn/commons/discovery"
@@ -16,10 +17,11 @@ func NewGRPCGateway(registry discovery.Registry) *gateway {
 }
 
 func (g *gateway) CreateOrder(ctx context.Context, p *pb.CreateOrderRequest) (*pb.Order, error) {
-	conn, err := discovery.ServiceConnection(ctx, "orders", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "orders", g.registry)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to dial server: %v", err)
 	}
+
 	c := pb.NewOrderServiceClient(conn)
 
 	return c.CreateOrder(ctx, &pb.CreateOrderRequest{
@@ -29,10 +31,11 @@ func (g *gateway) CreateOrder(ctx context.Context, p *pb.CreateOrderRequest) (*p
 }
 
 func (g *gateway) GetOrder(ctx context.Context, orderID, customerID string) (*pb.Order, error) {
-	conn, err := discovery.ServiceConnection(ctx, "orders", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "orders", g.registry)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to dial server: %v", err)
 	}
+
 	c := pb.NewOrderServiceClient(conn)
 
 	return c.GetOrder(ctx, &pb.GetOrderRequest{

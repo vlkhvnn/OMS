@@ -5,12 +5,16 @@ import (
 	"testing"
 
 	"github.com/vlkhvnn/commons/api"
+	inmemRegistry "github.com/vlkhvnn/commons/discovery/inmem"
+	"github.com/vlkhvnn/oms-payments/gateway"
 	"github.com/vlkhvnn/oms-payments/processor/inmem"
 )
 
 func TestService(t *testing.T) {
 	processor := inmem.NewInmem()
-	svc := NewService(processor)
+	registry := inmemRegistry.NewRegistry()
+	gateway := gateway.NewGateway(registry)
+	svc := NewService(processor, gateway)
 
 	t.Run("should create a payment link", func(t *testing.T) {
 		link, err := svc.CreatePayment(context.Background(), &api.Order{})

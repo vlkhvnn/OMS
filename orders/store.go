@@ -20,10 +20,11 @@ func NewStore() *store {
 func (s *store) Create(ctx context.Context, p *pb.CreateOrderRequest, items []*pb.Item) (string, error) {
 	id := "42"
 	orders = append(orders, &pb.Order{
-		ID:         id,
-		CustomerID: p.CustomerID,
-		Status:     "pending",
-		Items:      items,
+		ID:          id,
+		CustomerID:  p.CustomerID,
+		Status:      "pending",
+		Items:       items,
+		PaymentLink: "",
 	})
 	return id, nil
 }
@@ -34,5 +35,16 @@ func (s *store) Get(ctx context.Context, id, customerID string) (*pb.Order, erro
 			return o, nil
 		}
 	}
-	return nil, errors.New("Order not found")
+	return nil, errors.New("order not found")
+}
+
+func (s *store) Update(ctx context.Context, id string, order *pb.Order) error {
+	for i, o := range orders {
+		if o.ID == id {
+			orders[i].Status = order.Status
+			orders[i].PaymentLink = order.PaymentLink
+			return nil
+		}
+	}
+	return nil
 }

@@ -2,11 +2,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	common "github.com/vlkhvnn/commons"
 	pb "github.com/vlkhvnn/commons/api"
 	"github.com/vlkhvnn/oms-gateway/gateway"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -20,7 +22,7 @@ func NewHandler(gateway gateway.OrdersGateway) *handler {
 }
 
 func (h *handler) registerRoutes(mux *http.ServeMux) {
-	//static folder serving
+	// static folder serving
 	mux.Handle("/", http.FileServer(http.Dir("public")))
 	mux.HandleFunc("POST /api/customers/{customerID}/orders", h.handleCreateOrder)
 	mux.HandleFunc("GET /api/customers/{customerID}/orders/{orderID}", h.handleGetOrder)
@@ -30,7 +32,12 @@ func (h *handler) handleGetOrder(w http.ResponseWriter, r *http.Request) {
 	customerID := r.PathValue("customerID")
 	orderID := r.PathValue("orderID")
 
-	o, err := h.gateway.GetOrder(r.Context(), orderID, customerID)
+	// Create a tracer span
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
+	o, err := h.gateway.GetOrder(ctx, orderID, customerID)
 	rStatus := status.Convert(err)
 	if rStatus != nil {
 		if rStatus.Code() != codes.InvalidArgument {
@@ -57,11 +64,15 @@ func (h *handler) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o, err := h.gateway.CreateOrder(r.Context(), &pb.CreateOrderRequest{
+	// Create a tracer span
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
+	o, err := h.gateway.CreateOrder(ctx, &pb.CreateOrderRequest{
 		CustomerID: customerID,
 		Items:      items,
 	})
-
 	rStatus := status.Convert(err)
 	if rStatus != nil {
 		if rStatus.Code() != codes.InvalidArgument {
@@ -72,7 +83,12 @@ func (h *handler) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	common.WriteJSON(w, http.StatusOK, o)
+	res := &CreateOrderRequest{
+		Order:         o,
+		RedirectToURL: fmt.Sprintf("http://localhost:8080/success.html?customerID=%s&orderID=%s", o.CustomerID, o.ID),
+	}
+
+	common.WriteJSON(w, http.StatusOK, res)
 }
 
 func validateItems(items []*pb.ItemsWithQuantity) error {
@@ -82,11 +98,11 @@ func validateItems(items []*pb.ItemsWithQuantity) error {
 
 	for _, i := range items {
 		if i.ID == "" {
-			return errors.New("item id is required")
+			return errors.New("item ID is required")
 		}
 
 		if i.Quantity <= 0 {
-			return errors.New("item quanttity should be more than 0")
+			return errors.New("items must have a valid quantity")
 		}
 	}
 

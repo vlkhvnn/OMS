@@ -14,9 +14,9 @@ import (
 )
 
 var (
+	serviceName = "gateway"
 	httpAddr    = common.GetString("HTTP_ADDR", ":8080")
 	consulAddr  = common.GetString("CONSUL_ADDR", "localhost:8500")
-	serviceName = "gateway"
 )
 
 func main() {
@@ -24,6 +24,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	ctx := context.Background()
 	instanceID := discovery.GenerateInstanceID(serviceName)
 	if err := registry.Register(ctx, instanceID, serviceName, httpAddr); err != nil {
@@ -33,7 +34,7 @@ func main() {
 	go func() {
 		for {
 			if err := registry.HealthCheck(instanceID, serviceName); err != nil {
-				log.Fatalf("failed to health check. error: %s", err.Error())
+				log.Fatal("failed to health check")
 			}
 			time.Sleep(time.Second * 1)
 		}
@@ -44,10 +45,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	ordersGateway := gateway.NewGRPCGateway(registry)
+
 	handler := NewHandler(ordersGateway)
 	handler.registerRoutes(mux)
 
-	log.Printf("Starting http server at %s", httpAddr)
+	log.Printf("Starting HTTP server at %s", httpAddr)
 
 	if err := http.ListenAndServe(httpAddr, mux); err != nil {
 		log.Fatal("Failed to start http server")

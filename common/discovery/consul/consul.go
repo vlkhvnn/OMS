@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/consul/api"
 	consul "github.com/hashicorp/consul/api"
 )
 
@@ -16,27 +15,28 @@ type Registry struct {
 	client *consul.Client
 }
 
-func NewRegistry(address, serviceName string) (*Registry, error) {
+func NewRegistry(addr, serviceName string) (*Registry, error) {
 	config := consul.DefaultConfig()
-	config.Address = address
+	config.Address = addr
 
 	client, err := consul.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
+
 	return &Registry{client}, nil
 }
 
 func (r *Registry) Register(ctx context.Context, instanceID, serviceName, hostPort string) error {
-	parts := strings.Split(hostPort, ":")
-	if len(parts) != 2 {
+	host, portStr, found := strings.Cut(hostPort, ":")
+	if !found {
 		return errors.New("invalid host:port format. Eg: localhost:8081")
 	}
-	port, err := strconv.Atoi(parts[1])
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return err
 	}
-	host := parts[0]
+
 	return r.client.Agent().ServiceRegister(&consul.AgentServiceRegistration{
 		ID:      instanceID,
 		Address: host,
@@ -52,9 +52,13 @@ func (r *Registry) Register(ctx context.Context, instanceID, serviceName, hostPo
 	})
 }
 
-func (r *Registry) Deregister(ctx context.Context, instanceID, serviceName string) error {
+func (r *Registry) Deregister(ctx context.Context, instanceID string, serviceName string) error {
 	log.Printf("Deregistering service %s", instanceID)
 	return r.client.Agent().CheckDeregister(instanceID)
+}
+
+func (r *Registry) HealthCheck(instanceID string, serviceName string) error {
+	return r.client.Agent().UpdateTTL(instanceID, "online", consul.HealthPassing)
 }
 
 func (r *Registry) Discover(ctx context.Context, serviceName string) ([]string, error) {
@@ -62,13 +66,11 @@ func (r *Registry) Discover(ctx context.Context, serviceName string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
+
 	var instances []string
 	for _, entry := range entries {
 		instances = append(instances, fmt.Sprintf("%s:%d", entry.Service.Address, entry.Service.Port))
 	}
-	return instances, nil
-}
 
-func (r *Registry) HealthCheck(instanceID, serviceName string) error {
-	return r.client.Agent().UpdateTTL(instanceID, "online", api.HealthPassing)
+	return instances, nil
 }

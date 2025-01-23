@@ -13,6 +13,7 @@ import (
 	"github.com/vlkhvnn/commons/broker"
 	"github.com/vlkhvnn/commons/discovery"
 	"github.com/vlkhvnn/commons/discovery/consul"
+	"github.com/vlkhvnn/oms-payments/gateway"
 	st "github.com/vlkhvnn/oms-payments/processor/stripe"
 	"google.golang.org/grpc"
 )
@@ -26,7 +27,7 @@ var (
 	amqpHost             = common.GetString("RABBITMQ_HOST", "localhost")
 	amqpPort             = common.GetString("RABBITMQ_PORT", "5672")
 	stripeKey            = common.GetString("STRIPE_KEY", "")
-	httpAddr             = common.GetString("HTTP_ADDR", "localhost:8082")
+	httpAddr             = common.GetString("HTTP_ADDR", "localhost:8081")
 	endpointStripeSecret = common.GetString("STRIPE_ENDPOINT_KEY", "")
 )
 
@@ -64,22 +65,25 @@ func main() {
 	}()
 
 	stripeProcessor := st.NewProcessor()
-	svc := NewService(stripeProcessor)
+	gateway := gateway.NewGateway(registry)
+	svc := NewService(stripeProcessor, gateway)
 
 	amqpConsumer := NewConsumer(svc)
 	go amqpConsumer.Listen(ch)
 
 	// http server
 	mux := http.NewServeMux()
-	httpserver := NewPaymentHTTPHandler(ch)
-	httpserver.registerRoutes(mux)
+
+	httpServer := NewPaymentHTTPHandler(ch)
+	httpServer.registerRoutes(mux)
 
 	go func() {
 		log.Printf("Starting HTTP server at %s", httpAddr)
 		if err := http.ListenAndServe(httpAddr, mux); err != nil {
-			log.Fatal("failed to start http server", err)
+			log.Fatal("failed to start http server")
 		}
 	}()
+
 	// gRPC server
 	grpcServer := grpc.NewServer()
 
