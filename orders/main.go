@@ -22,9 +22,13 @@ var (
 	amqpPass    = common.GetString("RABBITMQ_PASS", "guest")
 	amqpHost    = common.GetString("RABBITMQ_HOST", "localhost")
 	amqpPort    = common.GetString("RABBITMQ_PORT", "5672")
+	jaegerAddr  = common.GetString("JAEGER_ADDR", "localhost:4318")
 )
 
 func main() {
+	if err := common.SetGlobalTracer(context.TODO(), serviceName, jaegerAddr); err != nil {
+		log.Fatal("could set global tracer", err)
+	}
 	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
 		panic(err)
@@ -62,7 +66,8 @@ func main() {
 
 	store := NewStore()
 	svc := NewService(store)
-	NewGRPCHandler(grpcServer, svc, ch)
+	svcWithTelemetry := NewTelemetryMiddleware(svc)
+	NewGRPCHandler(grpcServer, svcWithTelemetry, ch)
 
 	log.Println("gprc server started at:", grpcAddr)
 
