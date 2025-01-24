@@ -1,7 +1,12 @@
 # Default ignored files
 /shelf/
 /workspace.xml
-.env
+/common/.env
+/gateway/.env
+/kitchen/.env
+/payments/.env
+/orders/.env
+/stocks/.env
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files
