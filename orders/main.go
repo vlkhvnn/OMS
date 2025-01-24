@@ -11,6 +11,7 @@ import (
 	"github.com/vlkhvnn/commons/broker"
 	"github.com/vlkhvnn/commons/discovery"
 	"github.com/vlkhvnn/commons/discovery/consul"
+	"github.com/vlkhvnn/oms-orders/gateway"
 	"google.golang.org/grpc"
 )
 
@@ -65,7 +66,8 @@ func main() {
 	defer l.Close()
 
 	store := NewStore()
-	svc := NewService(store)
+	gateway := gateway.NewGateway(registry)
+	svc := NewService(store, gateway)
 	svcWithTelemetry := NewTelemetryMiddleware(svc)
 	NewGRPCHandler(grpcServer, svcWithTelemetry, ch)
 

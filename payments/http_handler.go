@@ -49,17 +49,20 @@ func (h *PaymentHTTPHandler) handleCheckoutWebhook(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if event.Type == stripe.EventTypeCheckoutSessionCompleted || event.Type == stripe.EventTypeCheckoutSessionAsyncPaymentSucceeded {
-		var cs stripe.CheckoutSession
-		err := json.Unmarshal(event.Data.Raw, &cs)
+	if event.Type == "checkout.session.completed" {
+		var session stripe.CheckoutSession
+		err := json.Unmarshal(event.Data.Raw, &session)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing webhook JSON: %v\n", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if cs.PaymentStatus == stripe.CheckoutSessionPaymentStatusPaid {
-			orderID := cs.Metadata["orderID"]
-			customerID := cs.Metadata["customerID"]
+
+		if session.PaymentStatus == "paid" {
+			log.Printf("Payment for Checkout Session %v succeeded!", session.ID)
+
+			orderID := session.Metadata["orderID"]
+			customerID := session.Metadata["customerID"]
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
@@ -80,11 +83,14 @@ func (h *PaymentHTTPHandler) handleCheckoutWebhook(w http.ResponseWriter, r *htt
 			amqpContext, messageSpan := tr.Start(ctx, fmt.Sprintf("AMQP - publish - %s", broker.OrderPaidEvent))
 			defer messageSpan.End()
 
+			headers := broker.InjectAMQPHeaders(amqpContext)
+
 			// publish a message
 			h.channel.PublishWithContext(amqpContext, broker.OrderPaidEvent, "", false, false, amqp.Publishing{
 				ContentType:  "application/json",
 				Body:         marshalledOrder,
 				DeliveryMode: amqp.Persistent,
+				Headers:      headers,
 			})
 
 			log.Println("Message published order.paid")
