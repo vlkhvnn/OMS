@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/vlkhvnn/commons/api"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type OrderService interface {
@@ -14,7 +15,24 @@ type OrderService interface {
 }
 
 type OrderStore interface {
-	Create(ctx context.Context, p *pb.CreateOrderRequest, items []*pb.Item) (string, error)
-	Get(ctx context.Context, id, customerID string) (*pb.Order, error)
-	Update(ctx context.Context, id string, order *pb.Order) error
+	Create(context.Context, Order) (primitive.ObjectID, error)
+	Get(ctx context.Context, id, customerID string) (*Order, error)
+	Update(ctx context.Context, id string, o *pb.Order) error
+}
+
+type Order struct {
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	CustomerID  string             `bson:"customerID,omitempty"`
+	Status      string             `bson:"status,omitempty"`
+	PaymentLink string             `bson:"paymentLink,omitempty"`
+	Items       []*pb.Item         `bson:"items,omitempty"`
+}
+
+func (o *Order) ToProto() *pb.Order {
+	return &pb.Order{
+		ID:          o.ID.Hex(),
+		CustomerID:  o.CustomerID,
+		Status:      o.Status,
+		PaymentLink: o.PaymentLink,
+	}
 }
