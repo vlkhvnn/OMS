@@ -110,7 +110,7 @@ Make sure that you run the stripe CLI and listen to the webhook!!!
   stripe listen --forward-to localhost:8081/webhook
 ```
 ### Monitoring
-Jaeger UI link: http://localhost:16686
-MongoDB UI link: http://localhost:8082
-RabbitMQ UI link: http://localhost:15672
+Jaeger UI link: http://localhost:16686 \
+MongoDB UI link: http://localhost:8082 \
+RabbitMQ UI link: http://localhost:15672 \
 Consul UI link: http://localhost:8500
