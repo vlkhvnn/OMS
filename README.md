@@ -74,7 +74,9 @@ The repository is organized as follows:
    To run individual services navigate to the respective service folder (for example, the `orders/` directory) and execute:
 
    ```bash
-   go run main.go
+   air
+   ```
+
 Make sure you have set up any necessary environment variables or configuration files as required by the service.
 
 ## Configuration
@@ -86,4 +88,29 @@ Make sure you have set up any necessary environment variables or configuration f
    - Service-specific settings
 
    Ensure these configurations are properly set up before running the services.
-  
+
+## How to work with this Project?
+
+  First of all, lets create an order. To enable to just make a POST request to this url: http://localhost:8080/api/customers/2/orders with the JSON below:
+  ```
+  [
+  {
+    "id": "1",
+    "quantity": 2
+  },
+  {
+    "id": "2",
+    "quantity": 1
+  }
+]
+  ```
+There will be a payment link in responce. Just fill the gaps in stripe with 4242...
+Make sure that you run the stripe CLI and listen to the webhook!!!
+```
+  stripe listen --forward-to localhost:8081/webhook
+```
+### Monitoring
+Jaeger UI link: http://localhost:16686
+MongoDB UI link: http://localhost:8082
+RabbitMQ UI link: http://localhost:15672
+Consul UI link: http://localhost:8500
